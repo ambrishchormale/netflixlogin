@@ -8,21 +8,18 @@ import { authMiddleware, createToken } from "./auth.js";
 
 const app = express();
 
-// 2. CONFIGURE CORS - Updated to include your Vercel URL directly
+// 2. CONFIGURE CORS
 const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = [
-      "https://netflixloginn-web.vercel.app", // Your live frontend
+      "https://netflixloginn-web.vercel.app",
       "http://localhost:3000",
       "http://localhost:5173",
-      ...(config.corsOrigins || []) // Keeps whatever was in your config.js
+      ...(config.corsOrigins || [])
     ];
-
-    // Allow requests with no origin (like mobile apps or curl) or if in allowed list
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log("CORS Blocked for origin:", origin);
       callback(new Error("CORS blocked for this origin"));
     }
   },
@@ -32,25 +29,23 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
-// 3. MIDDLEWARE
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json());
 
-// 4. ROUTES
+// --- ROUTES ---
+
 app.get('/', (req, res) => {
     res.send('Server is live and running!');
 });
 
-app.get('/api/test', (req, res) => {
-    res.json({ message: "API is working!" });
-});
-
-app.get("/api/health", (_req, res) => {
+// Health check available at both /api/health and /health
+app.get(["/api/health", "/health"], (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.post("/api/auth/register", async (req, res) => {
+// REGISTER - Handles both /api/auth/register and /auth/register
+app.post(["/api/auth/register", "/auth/register"], async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password || password.length < 6) {
     return res.status(400).json({ message: "Provide name, email and password (min 6 chars)" });
@@ -75,7 +70,8 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-app.post("/api/auth/login", async (req, res) => {
+// LOGIN - Handles both /api/auth/login and /auth/login
+app.post(["/api/auth/login", "/auth/login"], async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ message: "Provide email and password" });
@@ -100,7 +96,7 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-app.get("/api/auth/me", authMiddleware, async (req, res) => {
+app.get(["/api/auth/me", "/auth/me"], authMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT id, name, email FROM users WHERE id = ?", [req.user.id]);
     if (rows.length === 0) {
@@ -112,7 +108,7 @@ app.get("/api/auth/me", authMiddleware, async (req, res) => {
   }
 });
 
-app.get("/api/movies/rows", authMiddleware, async (_req, res) => {
+app.get(["/api/movies/rows", "/movies/rows"], authMiddleware, async (_req, res) => {
   const rowQueries = [
     { id: "trending", title: "Trending Now", query: "avengers" },
     { id: "action", title: "Action Hits", query: "mission impossible" },
@@ -143,14 +139,9 @@ app.get("/api/movies/rows", authMiddleware, async (_req, res) => {
             poster: movie.Poster,
           }));
 
-        return {
-          id: row.id,
-          title: row.title,
-          movies,
-        };
+        return { id: row.id, title: row.title, movies };
       }),
     );
-
     return res.json({ rows });
   } catch (error) {
     return res.status(500).json({ message: "Failed to fetch OMDB data", details: error.message });
@@ -170,7 +161,7 @@ app.use((err, _req, res, next) => {
 });
 
 app.use((_req, res) => {
-  res.status(404).json({ message: "Not found" });
+  res.status(404).json({ message: "Route not found on server" });
 });
 
 export default app;
