@@ -6,6 +6,14 @@ import { config } from "./config.js";
 import { pool, ensureSchema } from "./db.js";
 import { authMiddleware, createToken } from "./auth.js";
 
+app.get('/', (req, res) => {
+    res.send('Server is live and running!');
+});
+
+app.get('/api/test', (req, res) => {
+    res.json({ message: "API is working!" });
+});
+
 const app = express();
 
 const corsOptions = {
