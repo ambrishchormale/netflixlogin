@@ -6,17 +6,25 @@ import { config } from "./config.js";
 import { pool, ensureSchema } from "./db.js";
 import { authMiddleware, createToken } from "./auth.js";
 
-// 1. INITIALIZE APP FIRST (Moved this up)
 const app = express();
 
-// 2. CONFIGURE CORS
+// 2. CONFIGURE CORS - Updated to include your Vercel URL directly
 const corsOptions = {
-  origin(origin, callback) {
-    if (!origin || config.corsOrigins.includes(origin)) {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      "https://netflixloginn-web.vercel.app", // Your live frontend
+      "http://localhost:3000",
+      "http://localhost:5173",
+      ...(config.corsOrigins || []) // Keeps whatever was in your config.js
+    ];
+
+    // Allow requests with no origin (like mobile apps or curl) or if in allowed list
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
-      return;
+    } else {
+      console.log("CORS Blocked for origin:", origin);
+      callback(new Error("CORS blocked for this origin"));
     }
-    callback(new Error("CORS blocked for this origin"));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -29,7 +37,7 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json());
 
-// 4. ROUTES (Moved below initialization)
+// 4. ROUTES
 app.get('/', (req, res) => {
     res.send('Server is live and running!');
 });
@@ -155,6 +163,7 @@ app.use((err, _req, res, next) => {
     return res.status(403).json({ message: "CORS blocked for this origin" });
   }
   if (err) {
+    console.error(err);
     return res.status(500).json({ message: "Internal server error" });
   }
   return next();
@@ -164,10 +173,8 @@ app.use((_req, res) => {
   res.status(404).json({ message: "Not found" });
 });
 
-// 6. EXPORT FOR VERCEL (Required for Serverless)
 export default app;
 
-// 7. STARTUP (Only for local dev)
 if (process.env.NODE_ENV !== "production") {
   (async function start() {
     try {
