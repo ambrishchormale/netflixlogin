@@ -1,13 +1,36 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import App from "./App";
-import "./styles.css";
+import { useEffect } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { LoginPage } from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
+import { HomePage } from "./pages/HomePage";
+import { ProtectedRoute } from "./ProtectedRoute";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>,
-);
+export default function App() {
+  
+  // This effect is just for you to verify the URL in the console while developing/testing
+  useEffect(() => {
+    const backendUrl = import.meta.env.VITE_API_URL;
+    console.log("🚀 System Check: Frontend is pointing to:", backendUrl || "LOCAL_HOST (check your .env)");
+  }, []);
+
+  return (
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      
+      {/* Protected Routes - Only accessible if logged in */}
+      <Route
+        path="/home"
+        element={
+          <ProtectedRoute>
+            <HomePage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Redirect all other paths to /home (which redirects to /login if not authenticated) */}
+      <Route path="*" element={<Navigate to="/home" replace />} />
+    </Routes>
+  );
+}
