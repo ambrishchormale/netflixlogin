@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.server.pid
+.server.out
+.server.err
+server.out.log
+server.err.log
+node_modules/
+.env
+build/
+dist/
+.DS_Store
+client/.env
+server/.env
