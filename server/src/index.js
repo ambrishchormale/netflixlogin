@@ -6,29 +6,16 @@ import { config } from "./config.js";
 import { pool, ensureSchema } from "./db.js";
 import { authMiddleware, createToken } from "./auth.js";
 
-app.get('/', (req, res) => {
-    res.send('Server is live and running!');
-});
-
-app.get('/api/test', (req, res) => {
-    res.json({ message: "API is working!" });
-});
-
+// 1. INITIALIZE APP FIRST (Moved this up)
 const app = express();
 
+// 2. CONFIGURE CORS
 const corsOptions = {
   origin(origin, callback) {
-    // Allow server-to-server calls and CLI checks that do not send an Origin header.
-    if (!origin) {
+    if (!origin || config.corsOrigins.includes(origin)) {
       callback(null, true);
       return;
     }
-
-    if (config.corsOrigins.includes(origin)) {
-      callback(null, true);
-      return;
-    }
-
     callback(new Error("CORS blocked for this origin"));
   },
   credentials: true,
@@ -37,9 +24,19 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
+// 3. MIDDLEWARE
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json());
+
+// 4. ROUTES (Moved below initialization)
+app.get('/', (req, res) => {
+    res.send('Server is live and running!');
+});
+
+app.get('/api/test', (req, res) => {
+    res.json({ message: "API is working!" });
+});
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
@@ -152,15 +149,14 @@ app.get("/api/movies/rows", authMiddleware, async (_req, res) => {
   }
 });
 
+// 5. ERROR HANDLING
 app.use((err, _req, res, next) => {
   if (err?.message === "CORS blocked for this origin") {
     return res.status(403).json({ message: "CORS blocked for this origin" });
   }
-
   if (err) {
     return res.status(500).json({ message: "Internal server error" });
   }
-
   return next();
 });
 
@@ -168,14 +164,20 @@ app.use((_req, res) => {
   res.status(404).json({ message: "Not found" });
 });
 
-(async function start() {
-  try {
-    await ensureSchema();
-    app.listen(config.port, () => {
-      console.log(`Server running on http://localhost:${config.port}`);
-    });
-  } catch (error) {
-    console.error("Failed to start server", error.message);
-    process.exit(1);
-  }
-})();
+// 6. EXPORT FOR VERCEL (Required for Serverless)
+export default app;
+
+// 7. STARTUP (Only for local dev)
+if (process.env.NODE_ENV !== "production") {
+  (async function start() {
+    try {
+      await ensureSchema();
+      app.listen(config.port, () => {
+        console.log(`Server running on http://localhost:${config.port}`);
+      });
+    } catch (error) {
+      console.error("Failed to start server", error.message);
+      process.exit(1);
+    }
+  })();
+}
